@@ -1,11 +1,78 @@
 ---
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/Layout.astro';
+import Layout from "@/layouts/Layout.astro";
+import Button from "@/components/ui/button.astro";
+import Label from "@/components/ui/label.astro";
+import Input from "@/components/ui/input.astro";
+import { actions } from "astro:actions";
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+// Redirect if already authenticated
+const token = Astro.cookies.get("auth-token")?.value;
+if (token) {
+  return Astro.redirect("/dashboard");
+}
+
+// Get action result
+const result = await Astro.getActionResult(actions.auth.Login);
+
+if (result && !result.error) {
+  return Astro.redirect("/dashboard");
+}
 ---
 
-<Layout>
-	<Welcome />
+<Layout title="Login | Email Manager">
+  <main class="min-h-screen grid place-items-center p-4 bg-background">
+    <div class="w-full max-w-md space-y-6">
+      <!-- Header -->
+      <div class="space-y-2 text-center">
+        <h1 class="text-3xl font-bold tracking-tight text-foreground">
+          Email Manager
+        </h1>
+        <p class="text-muted-foreground text-balance">
+          Track and monitor all your forwarded email addresses in one place
+        </p>
+      </div>
+
+      <!-- Login Card -->
+      <div class="p-6 bg-card shadow-lg rounded-lg">
+        <form method="POST" action={actions.auth.Login} class="space-y-4">
+          <div class="space-y-2">
+            <Label
+              for="password"
+              class="text-sm font-medium leading-none text-foreground peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Password
+            </Label>
+            <div class="relative">
+              <Input
+                name="password"
+                type="password"
+                id="password"
+                required
+                minlength={5}
+                autocomplete="current-password"
+                class="w-full"
+                error={!!result?.error}
+              />
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                class="absolute right-3 top-1/2 -translate-y-1/2"
+                onclick={`const input = document.getElementById('password'); const type = input.type === 'password' ? 'text' : 'password'; input.type = type; input.nextElementSibling.textContent = type === 'password' ? '👁️' : '🔒';`}
+              >
+                👁️
+              </Button>
+            </div>
+            {
+              result?.error && (
+                <p class="text-destructive text-sm">{result.error.message}</p>
+              )
+            }
+          </div>
+
+          <Button type="submit" class="w-full">Login</Button>
+        </form>
+      </div>
+    </div>
+  </main>
 </Layout>

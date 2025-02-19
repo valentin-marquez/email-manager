@@ -1,0 +1,40 @@
+---
+import type { HTMLAttributes } from "astro/types";
+import { cva, type VariantProps } from "class-variance-authority";
+import { cn } from "@/lib/utils";
+
+const textareaVariants = cva(
+  "flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background transition-all duration-200 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-y aria-invalid:border-destructive aria-invalid:focus-visible:ring-destructive",
+  {
+    variants: {
+      variant: {
+        default: "hover:border-ring/30",
+        ghost:
+          "border-none shadow-none hover:bg-accent/50 dark:hover:bg-accent/20 focus:bg-accent/20",
+      },
+      size: {
+        default: "min-h-[100px]",
+        sm: "min-h-[80px] px-2 text-xs",
+        lg: "min-h-[120px] px-4 text-base",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  },
+);
+
+export interface Props
+  extends VariantProps<typeof textareaVariants>,
+    Omit<HTMLAttributes<"textarea">, "size"> {
+  error?: boolean;
+}
+
+const { variant, size, error, class: className, ...props } = Astro.props;
+---
+
+<textarea
+  class={cn(textareaVariants({ variant, size }), className)}
+  aria-invalid={error}
+  {...props}></textarea>

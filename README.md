@@ -1,48 +1,33 @@
-# Astro Starter Kit: Basics
+# 📧 Email Manager Dashboard
 
-```sh
-npm create astro@latest -- --template basics
-```
+> Track all your forwarded email addresses in one place! ✨
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/withastro/astro/tree/latest/examples/basics)
-[![Open with CodeSandbox](https://assets.codesandbox.io/github/button-edit-lime.svg)](https://codesandbox.io/p/sandbox/github/withastro/astro/tree/latest/examples/basics)
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/withastro/astro?devcontainer_path=.devcontainer/basics/devcontainer.json)
+A minimalist dashboard that helps you monitor and track emails from multiple forwarding addresses (like cv@domain.com, contact@domain.com) that redirect to your main personal inbox.
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+## ⚡ Key Features
 
-![just-the-basics](https://github.com/withastro/astro/assets/2244813/a0a5533c-a856-4198-8470-2d67b1d7c554)
+- 📥 Monitor emails from multiple forwarding addresses
+- 📊 Track which forwarding address received each email
+- 🔍 Identify the original recipient address for each email
+- 🚀 Built with Astro
+- ☁️ Powered by Cloudflare Workers
 
-## 🚀 Project Structure
+## 🛠️ How it Works
 
-Inside of your Astro project, you'll see the following folders and files:
+1. Set up email forwarding (e.g., cv@domain.com → your-personal@email.com)
+2. Cloudflare Workers processes incoming emails and tracks the original recipient
+3. View all forwarded emails in a clean dashboard, knowing exactly which address received each email
 
-```text
-/
-├── public/
-│   └── favicon.svg
-├── src/
-│   ├── layouts/
-│   │   └── Layout.astro
-│   └── pages/
-│       └── index.astro
-└── package.json
-```
+## 📝 Example Use Case
 
-To learn more about the folder structure of an Astro project, refer to [our guide on project structure](https://docs.astro.build/en/basics/project-structure/).
+If you have multiple forwarding addresses like:
 
-## 🧞 Commands
+- cv@domain.com → your-personal@email.com
+- contact@domain.com → your-personal@email.com
+- newsletter@domain.com → your-personal@email.com
 
-All commands are run from the root of the project, from a terminal:
+This dashboard will help you identify which address received each email, even though they all end up in the same inbox.
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
+---
 
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+Built with simplicity in mind 💫

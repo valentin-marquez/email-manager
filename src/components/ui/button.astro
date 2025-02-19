@@ -1,0 +1,93 @@
+---
+import type { HTMLAttributes } from "astro/types";
+import { cva, type VariantProps } from "class-variance-authority";
+import { cn } from "@/lib/utils";
+
+interface LoadingOptions {
+  message?: string;
+  icon?: boolean;
+}
+
+const buttonVariants = cva(
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium text-sm transition-all selection-none ease-out will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:cursor-pointer duration-150 no-underline",
+  {
+    variants: {
+      variant: {
+        default:
+          "bg-gradient-to-b from-primary/90 to-primary/90 border border-primary text-primary-foreground shadow-inner-shine hover:from-primary hover:to-primary [--shadow-color:hsl(var(--primary-foreground)/25%)]",
+        secondary:
+          "bg-gradient-to-b from-secondary/90 to-secondary/90 border border-secondary text-secondary-foreground shadow-inner-shine hover:from-secondary hover:to-secondary [--shadow-color:hsl(var(--secondary-foreground)/25%)]",
+
+        destructive:
+          "bg-gradient-to-b from-destructive/90 to-destructive/90 border border-destructive text-destructive-foreground hover:from-destructive hover:to-destructive shadow-inner-shine [--shadow-color:hsl(var(--destructive-foreground)/25%)]",
+        outline:
+          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+        ghost: "hover:bg-accent hover:text-accent-foreground",
+        link: "text-primary underline-offset-4 hover:underline",
+      },
+      size: {
+        default: "h-9 px-4 py-2",
+        sm: "h-8 rounded-md px-3 text-xs",
+        lg: "h-10 rounded-md px-8",
+        icon: "h-9 w-9",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  },
+);
+
+type Props = VariantProps<typeof buttonVariants> & {
+  href?: string;
+  target?: string;
+  class?: string;
+  loading?: boolean;
+  loadingOptions?: LoadingOptions;
+} & Partial<HTMLAttributes<"button"> & HTMLAttributes<"a">>;
+
+const {
+  class: className,
+  size,
+  variant,
+  href,
+  target,
+  loading = false,
+  loadingOptions = {},
+  ...props
+} = Astro.props;
+
+const Element = href ? "a" : "button";
+---
+
+<Element
+  class={cn(buttonVariants({ size, variant }), className)}
+  {...href ? { href, target } : {}}
+  disabled={loading}
+  {...props}
+>
+  {
+    loading ? (
+      <>
+        {loadingOptions.icon ? (
+          <slot name="loading-icon">
+            <div class="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
+          </slot>
+        ) : null}
+        <span>{loadingOptions.message || "Loading..."}</span>
+      </>
+    ) : (
+      <slot />
+    )
+  }
+</Element>
+
+<style>
+  .shadow-inner-shine {
+    --tw-shadow: inset 0 1px 0
+      var(--shadow-color, hsl(var(--primary-foreground) / 25%));
+    box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000),
+      var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+  }
+</style>

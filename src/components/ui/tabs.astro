@@ -1,0 +1,262 @@
+---
+import type { HTMLAttributes } from "astro/types";
+import { cva, type VariantProps } from "class-variance-authority";
+import { cn } from "@/lib/utils";
+
+const tabsVariants = cva("relative w-full", {
+  variants: {
+    variant: {
+      underline: "relative w-full",
+      highlight: "relative w-full",
+    },
+  },
+  defaultVariants: {
+    variant: "underline",
+  },
+});
+
+interface Props
+  extends VariantProps<typeof tabsVariants>,
+    HTMLAttributes<"div"> {
+  defaultValue?: string;
+}
+
+const {
+  variant = "underline",
+  defaultValue,
+  class: className,
+  ...props
+} = Astro.props;
+---
+
+<custom-tabs
+  data-default-value={defaultValue}
+  data-variant={variant}
+  class={cn(tabsVariants({ variant }), className)}
+  {...props}
+>
+  <slot />
+</custom-tabs>
+
+<script>
+  class CustomTabs extends HTMLElement {
+    private activeIndicator: HTMLElement | null = null;
+    private animation: Animation | null = null;
+
+    constructor() {
+      super();
+      this.activeIndicator = document.createElement("div");
+      this.activeIndicator.className =
+        "absolute left-0 top-0 h-full bg-background/95 backdrop-blur-[1px] rounded-md shadow-sm border border-border/40";
+      this.activeIndicator.setAttribute("data-active-indicator", "");
+    }
+
+    private createSpringAnimation(
+      from: number,
+      to: number,
+      property: string,
+    ): Animation {
+      const keyframes = [
+        { transform: `translateX(${from}px)` },
+        { transform: `translateX(${to}px)` },
+      ];
+
+      return new Animation(
+        new KeyframeEffect(this.activeIndicator, keyframes, {
+          duration: 200,
+          easing: "cubic-bezier(0.23, 1, 0.32, 1)",
+          fill: "forwards",
+        }),
+      );
+    }
+
+    connectedCallback() {
+      const variant = this.dataset.variant || "underline";
+
+      // Configurar el estilo del indicador según la variante
+      if (variant === "underline") {
+        this.activeIndicator!.className =
+          "absolute bottom-0 left-0 h-0.5 bg-primary rounded-full";
+      } else if (variant === "highlight") {
+        this.activeIndicator!.className =
+          "absolute left-0 top-0 h-full bg-primary/10 rounded-md";
+      }
+
+      const tabList = this.querySelector('[role="tablist"]');
+      if (tabList) {
+        tabList.appendChild(this.activeIndicator!);
+
+        requestAnimationFrame(() => {
+          const defaultValue = this.dataset.defaultValue;
+          if (defaultValue) {
+            const defaultTab = this.querySelector(
+              `[data-tab-trigger][data-value="${defaultValue}"]`,
+            );
+            if (defaultTab instanceof HTMLElement) {
+              this.updateIndicator(defaultTab, false);
+            }
+            this.activateTab(defaultValue);
+          } else {
+            const firstTab = this.querySelector("[data-tab-trigger]");
+            if (firstTab instanceof HTMLElement && firstTab.dataset.value) {
+              this.updateIndicator(firstTab, false);
+              this.activateTab(firstTab.dataset.value);
+            }
+          }
+        });
+      }
+
+      this.addEventListener("click", this.handleTabClick.bind(this));
+      window.addEventListener("resize", this.handleResize.bind(this));
+    }
+
+    disconnectedCallback() {
+      window.removeEventListener("resize", this.handleResize.bind(this));
+    }
+
+    private handleResize() {
+      const activeTab = this.querySelector(
+        '[data-tab-trigger][data-state="active"]',
+      );
+      if (activeTab instanceof HTMLElement) {
+        this.updateIndicator(activeTab, false);
+      }
+    }
+
+    private handleTabClick(e: Event) {
+      const trigger = (e.target as Element).closest("[data-tab-trigger]");
+      if (trigger instanceof HTMLElement) {
+        const value = trigger.dataset.value;
+        if (value) {
+          this.activateTab(value);
+          this.updateIndicator(trigger, true);
+        }
+      }
+    }
+
+    private activateTab(value: string) {
+      const triggers = this.querySelectorAll("[data-tab-trigger]");
+      const contents = this.querySelectorAll("[data-tab-content]");
+
+      triggers.forEach((trigger) => {
+        if (trigger instanceof HTMLElement) {
+          const isSelected = trigger.dataset.value === value;
+          trigger.setAttribute(
+            "data-state",
+            isSelected ? "active" : "inactive",
+          );
+          trigger.setAttribute("aria-selected", isSelected.toString());
+          trigger.setAttribute("tabindex", isSelected ? "0" : "-1");
+        }
+      });
+
+      contents.forEach((content) => {
+        if (content instanceof HTMLElement) {
+          const isSelected = content.dataset.value === value;
+          content.setAttribute(
+            "data-state",
+            isSelected ? "active" : "inactive",
+          );
+          content.hidden = !isSelected;
+
+          if (isSelected) {
+            content.style.animation = "fadeIn 0.2s ease-in-out";
+          }
+        }
+      });
+    }
+
+    private updateIndicator(activeTab: HTMLElement, animate: boolean = true) {
+      if (!this.activeIndicator) return;
+
+      const tabList = this.querySelector('[role="tablist"]');
+      if (!tabList) return;
+
+      const tabRect = activeTab.getBoundingClientRect();
+      const listRect = tabList.getBoundingClientRect();
+
+      const currentTransform = new DOMMatrix(
+        getComputedStyle(this.activeIndicator).transform,
+      );
+      const currentX = currentTransform.m41;
+      const targetX = tabRect.left - listRect.left;
+
+      // Actualizar el ancho
+      this.activeIndicator.style.width = `${tabRect.width}px`;
+
+      if (animate) {
+        // Cancelar animación anterior si existe
+        if (this.animation) {
+          this.animation.cancel();
+        }
+
+        // Crear y reproducir nueva animación
+        this.animation = this.createSpringAnimation(
+          currentX,
+          targetX,
+          "transform",
+        );
+        this.animation.play();
+      } else {
+        this.activeIndicator.style.transform = `translateX(${targetX}px)`;
+      }
+    }
+  }
+
+  if (!customElements.get("custom-tabs")) {
+    customElements.define("custom-tabs", CustomTabs);
+  }
+</script>
+
+<style is:global>
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  [data-tab-trigger] {
+    position: relative;
+    z-index: 2;
+    transition: color 0.2s ease;
+  }
+
+  [data-tab-trigger][data-state="active"] {
+    color: var(--tab-foreground, hsl(var(--foreground)));
+  }
+
+  [data-active-indicator] {
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  [data-tab-content] {
+    position: relative;
+  }
+  [data-active-indicator] {
+    z-index: 1;
+    pointer-events: none;
+    transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  [data-variant="underline"] [data-tab-trigger] {
+    border-bottom: 2px solid transparent;
+  }
+
+  [data-variant="underline"] [data-tab-trigger][data-state="active"] {
+    border-bottom-color: transparent;
+  }
+
+  [data-variant="highlight"] [data-tab-trigger][data-state="active"] {
+    color: var(--primary);
+  }
+
+  [data-variant="solid"] [data-tab-trigger][data-state="active"] {
+    color: var(--foreground);
+  }
+</style>

@@ -1,0 +1,23 @@
+---
+import type { HTMLAttributes } from "astro/types";
+import { cn } from "@/lib/utils";
+
+interface Props extends HTMLAttributes<"div"> {
+  class?: string;
+}
+
+const { class: className, ...props } = Astro.props;
+---
+
+<div
+  class={cn(
+    "inline-flex items-center justify-start relative",
+    "w-full",
+    className,
+  )}
+  role="tablist"
+  aria-orientation="horizontal"
+  {...props}
+>
+  <slot />
+</div>

@@ -1,0 +1,19 @@
+{
+	"biome.lspBin": "node_modules/@biomejs/cli-win32-x64/biome.exe",
+	"files.associations": {
+		"*.css": "tailwindcss"
+	},
+	"tailwindCSS.includeLanguages": {
+		"astro": "html"
+	},
+	"emmet.includeLanguages": {
+		"astro": "html"
+	},
+	"[astro]": {
+		"editor.defaultFormatter": "astro-build.astro-vscode"
+	},
+	"typescript.tsdk": "node_modules/typescript/lib",
+	"typescript.enablePromptUseWorkspaceTsdk": true,
+	"editor.formatOnSave": true,
+	"editor.defaultFormatter": "biomejs.biome"
+}

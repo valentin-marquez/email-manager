@@ -1,0 +1,326 @@
+---
+import type { HTMLAttributes } from "astro/types";
+import { cva, type VariantProps } from "class-variance-authority";
+import { cn } from "@/lib/utils";
+
+const selectVariants = cva(
+  "flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 data-[open=true]:outline-none data-[open=true]:ring-2 data-[open=true]:ring-ring data-[open=true]:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 select-none aria-invalid:border-destructive aria-invalid:focus-visible:ring-destructive",
+  {
+    variants: {
+      variant: {
+        default: "hover:border-ring/30 focus:animate-border-pulse",
+        ghost: "border-none shadow-none hover:bg-accent/50 focus:bg-accent/20",
+      },
+      sizeVariant: {
+        default: "h-10",
+        sm: "h-8 px-2 text-xs",
+        lg: "h-12 px-4 text-base",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      sizeVariant: "default",
+    },
+  },
+);
+
+interface Props
+  extends VariantProps<typeof selectVariants>,
+    HTMLAttributes<"select"> {
+  error?: boolean;
+  placeholder?: string;
+  searchable?: boolean;
+  disabled?: boolean;
+  required?: boolean;
+  defaultValue?: string;
+  name?: string;
+}
+
+const {
+  variant,
+  sizeVariant,
+  error,
+  placeholder,
+  searchable = false,
+  disabled = false,
+  required = false,
+  defaultValue,
+  name,
+  class: className,
+  ...attrs
+} = Astro.props;
+---
+
+<div class="relative cursor-pointer">
+  <custom-select
+    class={cn(selectVariants({ variant, sizeVariant }), className)}
+    data-placeholder={placeholder}
+    data-searchable={searchable.toString()}
+    data-disabled={disabled.toString()}
+    data-required={required.toString()}
+    data-default-value={defaultValue}
+    data-name={name}
+    aria-invalid={error}
+    {...attrs}
+  >
+    <div
+      class="custom-select-options hidden absolute top-full left-0 w-full mt-2 bg-background border border-input rounded-md shadow-lg z-50 max-h-60 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
+    >
+      <slot />
+    </div>
+  </custom-select>
+  <svg
+    class="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none"
+    viewBox="0 0 15 15"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M4.93179 5.43179C4.75605 5.60753 4.75605 5.89245 4.93179 6.06819C5.10753 6.24392 5.39245 6.24392 5.56819 6.06819L7.49999 4.13638L9.43179 6.06819C9.60753 6.24392 9.89245 6.24392 10.0682 6.06819C10.2439 5.89245 10.2439 5.60753 10.0682 5.43179L7.81819 3.18179C7.73378 3.09738 7.61933 3.04999 7.49999 3.04999C7.38064 3.04999 7.26619 3.09738 7.18179 3.18179L4.93179 5.43179Z"
+      fill="currentColor"></path>
+    <path
+      d="M4.93179 9.56819C5.10753 9.39245 5.39245 9.39245 5.56819 9.56819L7.49999 11.5L9.43179 9.56819C9.60753 9.39245 9.89245 9.39245 10.0682 9.56819C10.2439 9.74392 10.2439 10.0288 10.0682 10.2046L7.81819 12.4546C7.73378 12.539 7.61933 12.5864 7.49999 12.5864C7.38064 12.5864 7.26619 12.539 7.18179 12.4546L4.93179 10.2046C4.75605 10.0288 4.75605 9.74392 4.93179 9.56819Z"
+      fill="currentColor"></path>
+  </svg>
+</div>
+
+<style>
+  custom-select.invalid {
+    border-color: rgb(var(--color-destructive));
+    animation: shake 0.3s ease-in-out;
+  }
+
+  @keyframes shake {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    25% {
+      transform: translateX(-5px);
+    }
+    75% {
+      transform: translateX(5px);
+    }
+  }
+</style>
+<script>
+  interface SelectChangeEventDetail {
+    value: string;
+    text: string;
+  }
+
+  class CustomSelect extends HTMLElement {
+    private selectedValue: string = "";
+    private selectedText: string = "";
+    private isOpen: boolean = false;
+    private displayElement!: HTMLDivElement;
+    private optionsContainer!: HTMLElement;
+    private hiddenInput: HTMLInputElement | null = null;
+
+    connectedCallback(): void {
+      this.setupInitialState();
+      this.addEventListeners();
+      this.setupKeyboardNavigation();
+
+      // Set tabindex and ARIA attributes
+      this.setAttribute("tabindex", "0");
+      this.setAttribute("role", "combobox");
+      this.setAttribute("aria-haspopup", "listbox");
+      this.setAttribute("aria-expanded", "false");
+
+      // Add form validation
+      if (this.dataset.required === "true") {
+        const form = this.closest("form");
+        if (form) {
+          form.addEventListener("submit", (e) => {
+            if (!this.checkValidity()) {
+              e.preventDefault();
+              this.classList.add("invalid");
+              this.focus();
+            }
+          });
+        }
+      }
+    }
+
+    private setupInitialState(): void {
+      // Create display element
+      this.displayElement = document.createElement("div");
+      this.displayElement.className =
+        "selected-value cursor-pointer text-muted-foreground";
+      this.displayElement.textContent = this.dataset.placeholder || "";
+      this.insertBefore(this.displayElement, this.firstChild);
+
+      // Create hidden input for form submission if name is provided
+      if (this.dataset.name) {
+        this.hiddenInput = document.createElement("input");
+        this.hiddenInput.type = "hidden";
+        this.hiddenInput.name = this.dataset.name;
+        this.hiddenInput.required = this.dataset.required === "true";
+        this.insertBefore(this.hiddenInput, this.firstChild);
+      }
+
+      // Apply disabled state if needed
+      if (this.dataset.disabled === "true") {
+        this.setAttribute("disabled", "");
+        this.classList.add("disabled");
+      }
+
+      // Get options container
+      const container = this.querySelector<HTMLElement>(
+        ".custom-select-options",
+      );
+      if (!container) throw new Error("Options container not found");
+      this.optionsContainer = container;
+
+      // Set default value if provided
+      if (this.dataset.defaultValue) {
+        const defaultOption = this.querySelector(
+          `custom-option[value="${this.dataset.defaultValue}"]`,
+        ) as HTMLElement;
+        if (defaultOption) {
+          this.selectOption(defaultOption);
+        }
+      }
+    }
+
+    private checkValidity(): boolean {
+      return !(this.dataset.required === "true" && !this.selectedValue);
+    }
+
+    private addEventListeners(): void {
+      if (this.dataset.disabled === "true") return;
+
+      // Toggle open/close on click
+      this.addEventListener("click", (e: MouseEvent) => {
+        if (!(e.target as Element).closest("custom-option")) {
+          this.isOpen ? this.close() : this.open();
+        }
+      });
+
+      // Close on outside click
+      document.addEventListener("click", (e: MouseEvent) => {
+        if (!this.contains(e.target as Node)) {
+          this.close();
+        }
+      });
+
+      // Option selection
+      this.optionsContainer.addEventListener("click", (e: MouseEvent) => {
+        const option = (e.target as Element).closest("custom-option");
+        if (option instanceof HTMLElement) {
+          this.selectOption(option);
+          e.stopPropagation();
+        }
+      });
+    }
+
+    private setupKeyboardNavigation(): void {
+      if (this.dataset.disabled === "true") return;
+
+      this.addEventListener("keydown", (e: KeyboardEvent) => {
+        switch (e.key) {
+          case "Enter":
+          case " ":
+            if (!this.isOpen) {
+              e.preventDefault();
+              this.open();
+            }
+            break;
+          case "Escape":
+            this.close();
+            break;
+          case "ArrowDown":
+            e.preventDefault();
+            this.navigateOptions(1);
+            break;
+          case "ArrowUp":
+            e.preventDefault();
+            this.navigateOptions(-1);
+            break;
+        }
+      });
+    }
+
+    private navigateOptions(direction: number): void {
+      const options = Array.from(
+        this.querySelectorAll<HTMLElement>("custom-option"),
+      );
+      const currentIndex = options.findIndex(
+        (option) => option.getAttribute("aria-selected") === "true",
+      );
+
+      let nextIndex = currentIndex + direction;
+      if (nextIndex < 0) nextIndex = options.length - 1;
+      if (nextIndex >= options.length) nextIndex = 0;
+
+      const nextOption = options[nextIndex];
+      if (nextOption) {
+        this.selectOption(nextOption);
+      }
+    }
+
+    private open(): void {
+      if (this.dataset.disabled === "true") return;
+
+      this.isOpen = true;
+      this.optionsContainer.classList.remove("hidden");
+      this.setAttribute("aria-expanded", "true");
+      this.setAttribute("data-open", "true");
+    }
+
+    private close(): void {
+      this.isOpen = false;
+      this.optionsContainer.classList.add("hidden");
+      this.setAttribute("aria-expanded", "false");
+      this.removeAttribute("data-open");
+    }
+
+    private selectOption(option: HTMLElement): void {
+      // Update all options state
+      this.querySelectorAll<HTMLElement>("custom-option").forEach((opt) => {
+        opt.setAttribute("aria-selected", "false");
+        opt.setAttribute("data-selected", "false");
+      });
+
+      option.setAttribute("aria-selected", "true");
+      option.setAttribute("data-selected", "true");
+
+      const value = option.getAttribute("value");
+      if (!value) return;
+
+      this.selectedValue = value;
+      this.selectedText = option.textContent || "";
+
+      // Update display element
+      this.displayElement.classList.remove("text-muted-foreground");
+      this.displayElement.classList.add("text-foreground");
+      this.displayElement.textContent = this.selectedText;
+
+      // Update hidden input value if it exists
+      if (this.hiddenInput) {
+        this.hiddenInput.value = this.selectedValue;
+      }
+
+      // Dispatch change event
+      this.dispatchEvent(
+        new CustomEvent<SelectChangeEventDetail>("change", {
+          detail: {
+            value: this.selectedValue,
+            text: this.selectedText,
+          },
+        }),
+      );
+
+      requestAnimationFrame(() => {
+        this.close();
+        this.focus();
+      });
+    }
+  }
+
+  // Only define if not already defined
+  if (!customElements.get("custom-select")) {
+    customElements.define("custom-select", CustomSelect);
+  }
+</script>
