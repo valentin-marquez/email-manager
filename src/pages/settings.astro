@@ -1,0 +1,228 @@
+---
+import Header from "@/components/navigation/header.astro";
+import MailLayout from "@/layouts/MailLayout.astro";
+import Button from "@/components/ui/button.astro";
+import Input from "@/components/ui/input.astro";
+import Label from "@/components/ui/label.astro";
+import Tabs from "@/components/ui/tabs.astro";
+import TabsList from "@/components/ui/tabs-list.astro";
+import TabsTrigger from "@/components/ui/tabs-trigger.astro";
+import TabsContent from "@/components/ui/tabs-content.astro";
+import { db, AuthConfig, eq } from "astro:db";
+import { actions } from "astro:actions";
+
+// Check if user is authenticated
+const authToken = Astro.cookies.get("auth-token")?.value;
+if (!authToken) {
+  return Astro.redirect("/login");
+}
+
+// Fetch API token for display
+const apiTokenEntry = await db
+  .select()
+  .from(AuthConfig)
+  .where(eq(AuthConfig.key, "API_TOKEN"))
+  .limit(1);
+
+const apiToken = apiTokenEntry[0]?.value || "Not available";
+
+// Track action results
+const resultPassword = Astro.getActionResult(actions.auth.changePassword);
+let passwordUpdateMessage = "";
+let tokenUpdateMessage = "";
+
+// Handle password update result
+if (resultPassword) {
+  passwordUpdateMessage = resultPassword.error
+    ? resultPassword.error.message || "Failed to update password"
+    : "Password updated successfully";
+}
+
+const resultRegenerateToken = Astro.getActionResult(
+  actions.auth.regenerateToken
+);
+// Handle token regeneration result
+if (resultRegenerateToken) {
+  if (resultRegenerateToken.error) {
+    tokenUpdateMessage = "Failed to regenerate API token";
+  } else {
+    tokenUpdateMessage = "API token regenerated successfully";
+    // Refresh the page to show the new token
+    return Astro.redirect("/settings?tab=api");
+  }
+}
+
+const tab = Astro.url.searchParams.get("tab") || "security";
+---
+
+<MailLayout title="Settings">
+  <Header slot="header" />
+
+  <div class="container mx-auto p-4 max-w-4xl">
+    <h1 class="text-2xl font-bold mb-6">Account Settings</h1>
+
+    <Tabs defaultValue={tab}>
+      <TabsList class="mb-6 border-b">
+        <TabsTrigger value="security">Security</TabsTrigger>
+        <TabsTrigger value="api">API Access</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="security">
+        <div class="bg-card rounded-lg border p-6">
+          <h2 class="text-lg font-semibold mb-4">Change Password</h2>
+
+          {
+            passwordUpdateMessage && (
+              <div
+                class={`mb-4 p-3 rounded-md ${
+                  passwordUpdateMessage.includes("success")
+                    ? "bg-green-100/20 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                    : "bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive-foreground"
+                }`}
+              >
+                {passwordUpdateMessage}
+              </div>
+            )
+          }
+
+          <form
+            method="POST"
+            action={actions.auth.changePassword}
+            class="space-y-4"
+          >
+            <div class="space-y-2">
+              <Label htmlFor="password" required>Current Password</Label>
+              <Input
+                type="password"
+                id="password"
+                name="password"
+                placeholder="Enter your current password"
+                required
+              />
+            </div>
+
+            <div class="space-y-2">
+              <Label htmlFor="newPassword" required>New Password</Label>
+              <Input
+                type="password"
+                id="newPassword"
+                name="newPassword"
+                placeholder="Enter your new password"
+                required
+                minlength="8"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <Label htmlFor="confirmPassword" required
+                >Confirm New Password</Label
+              >
+              <Input
+                type="password"
+                id="confirmPassword"
+                name="confirmPassword"
+                placeholder="Confirm your new password"
+                required
+              />
+            </div>
+
+            <Button type="submit" class="mt-2">Update Password</Button>
+          </form>
+        </div>
+      </TabsContent>
+
+      <TabsContent value="api">
+        <div class="bg-card rounded-lg border p-6">
+          <h2 class="text-lg font-semibold mb-4">API Token</h2>
+
+          {
+            tokenUpdateMessage && (
+              <div
+                class={`mb-4 p-3 rounded-md ${tokenUpdateMessage.includes("success") ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
+              >
+                {tokenUpdateMessage}
+              </div>
+            )
+          }
+
+          <p class="text-sm text-muted-foreground mb-4">
+            Use this token to authenticate API requests to your email manager.
+            Keep this token secure and don't share it with others.
+          </p>
+
+          <div class="mb-6">
+            <Label htmlFor="apiToken">Your API Token</Label>
+            <div class="mt-2 flex">
+              <Input
+                type="text"
+                id="apiToken"
+                value={apiToken}
+                readonly
+                class="font-mono text-xs"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                class="ml-2"
+                onclick="navigator.clipboard.writeText(document.getElementById('apiToken').value).then(() => alert('Token copied to clipboard'))"
+              >
+                Copy
+              </Button>
+            </div>
+          </div>
+
+          <div class="border-t pt-4">
+            <h3 class="text-md font-medium mb-2">Regenerate Token</h3>
+            <p class="text-sm text-muted-foreground mb-4">
+              Warning: Regenerating your API token will invalidate the current
+              token. Any applications using the old token will need to be
+              updated.
+            </p>
+
+            <form method="POST" action={actions.auth.regenerateToken}>
+              <Button type="submit" variant="destructive"
+                >Regenerate API Token</Button
+              >
+            </form>
+          </div>
+        </div>
+      </TabsContent>
+    </Tabs>
+  </div>
+</MailLayout>
+
+<script>
+  // Client-side validation for password form
+  document.addEventListener("DOMContentLoaded", () => {
+    const passwordForm = document.querySelector("form[action]");
+    if (passwordForm) {
+      passwordForm.addEventListener("submit", (e) => {
+        const newPasswordElement = document.getElementById(
+          "newPassword"
+        ) as HTMLInputElement;
+        const confirmPasswordElement = document.getElementById(
+          "confirmPassword"
+        ) as HTMLInputElement;
+
+        if (!newPasswordElement || !confirmPasswordElement) {
+          e.preventDefault();
+          alert("Password fields not found");
+          return;
+        }
+
+        const newPassword = newPasswordElement.value;
+        const confirmPassword = confirmPasswordElement.value;
+
+        if (newPassword !== confirmPassword) {
+          e.preventDefault();
+          alert("New passwords do not match");
+        }
+
+        if (newPassword.length < 8) {
+          e.preventDefault();
+          alert("Password must be at least 8 characters");
+        }
+      });
+    }
+  });
+</script>

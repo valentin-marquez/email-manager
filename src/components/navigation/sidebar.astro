@@ -1,0 +1,43 @@
+---
+import Button from '../ui/button.astro';
+
+const menuItems = [
+  { name: 'Inbox', href: '/', icon: '📥' },
+  { name: 'Sent', href: '/sent', icon: '📤' },
+  { name: 'Drafts', href: '/drafts', icon: '📝' },
+  { name: 'Trash', href: '/trash', icon: '🗑️' },
+];
+
+const currentPath = Astro.url.pathname;
+---
+
+<aside class="w-64 shrink-0 border-r border-border h-screen bg-background">
+  <div class="flex flex-col h-full">
+    <div class="p-4">
+      <h2 class="text-xl font-bold">Mail Manager</h2>
+    </div>
+
+    <nav class="flex-1 px-2 py-4">
+      <ul class="flex justify-around md:flex-col md:space-y-1">
+        {
+          menuItems.map((item) => (
+            <li class="w-full">
+              <Button
+                href={item.href}
+                variant="ghost"
+                class={`w-full text-center md:text-left md:justify-start ${
+                  currentPath === item.href
+                    ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                    : 'text-sidebar-foreground'
+                }`}
+              >
+                <span class="block md:inline md:mr-3">{item.icon}</span>
+                <span class="text-xs md:text-base">{item.name}</span>
+              </Button>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+  </div>
+</aside>

@@ -1,0 +1,198 @@
+---
+import { db, Email, desc } from "astro:db";
+import Checkbox from "../ui/checkbox.astro";
+import { selectedEmailId } from "@/store/email";
+
+const emails = await db
+  .select()
+  .from(Email)
+  .orderBy(desc(Email.receivedAt))
+  .all();
+
+const uniqueCategories = [
+  ...new Set(emails.map((email) => email.category.toLowerCase())),
+];
+
+const categoryColors = uniqueCategories.reduce(
+  (colors, category, index) => {
+    const defaultColors = ["chart-1", "chart-2", "chart-3", "chart-4"];
+    const colorIndex = index % defaultColors.length;
+    colors[category] =
+      `bg-${defaultColors[colorIndex]} text-${defaultColors[colorIndex]}-foreground`;
+    return colors;
+  },
+  {} as Record<string, string>,
+);
+
+const getCategoryColor = (category: string) => {
+  return (
+    categoryColors[category.toLowerCase()] || "bg-accent text-accent-foreground"
+  );
+};
+
+const isLoading = !emails;
+---
+
+{
+  isLoading && (
+    <div class="w-full space-y-4 p-4">
+      {Array.from({ length: 5 }).map(() => (
+        <div class="flex items-center gap-4 animate-pulse">
+          <div class="w-8 h-8 bg-muted rounded" />
+          <div class="flex-1 space-y-2">
+            <div class="h-4 bg-muted rounded w-1/4" />
+            <div class="h-4 bg-muted rounded w-3/4" />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+<div class="w-full space-y-1">
+  {
+    emails.length === 0 ? (
+      <div class="flex items-center justify-center p-8">
+        <p class="text-muted-foreground">No emails to display</p>
+      </div>
+    ) : (
+      <ul class="divide-y divide-border">
+        {emails.map((email) => (
+          <li
+            class="group relative hover:bg-accent/30 transition-colors cursor-pointer"
+            data-email-id={email.id}
+            data-selected={selectedEmailId.get() === email.id}
+          >
+            <div class="flex items-center px-4 py-3 gap-4">
+              <div class="flex items-center w-8">
+                <Checkbox data-email-id={email.id} />
+                {email.status === "unread" && (
+                  <div class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full" />
+                )}
+              </div>
+
+              <div class="min-w-0 flex-1 space-y-1">
+                <div class="flex items-center justify-between gap-2">
+                  <div class="flex items-center gap-2">
+                    <p class="truncate text-sm font-medium text-foreground">
+                      {email.from}
+                    </p>
+                    <span
+                      class={`${getCategoryColor(email.category)} text-xs px-2 py-1 rounded-full capitalize`}
+                    >
+                      {email.category}
+                    </span>
+                  </div>
+                  <p class="text-xs text-muted-foreground whitespace-nowrap">
+                    {new Date(email.receivedAt).toLocaleTimeString("en-US", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                </div>
+
+                <div class="flex items-baseline justify-between gap-2">
+                  <p class="truncate text-sm font-medium text-foreground">
+                    {email.subject}
+                  </p>
+                  {email.status === "unread" && (
+                    <span class="flex-shrink-0 w-2 h-2 bg-primary rounded-full" />
+                  )}
+                </div>
+
+                <p class="truncate text-sm text-muted-foreground">
+                  {email.content}
+                </p>
+              </div>
+            </div>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+</div>
+
+<script>
+  import { openPreview } from "@/store/email";
+
+  async function fetchEmails() {
+    const response = await fetch("/api/emails");
+    if (!response.ok) {
+      console.error("Failed to fetch emails");
+      return [];
+    }
+
+    return await response.json();
+  }
+
+  async function updateEmailList() {
+    const emails = await fetchEmails();
+    if (!emails) return;
+
+    const container = document.querySelector("ul.divide-y");
+    if (!container) return;
+
+    // RE-redenr the list with new data
+    // aqui iria la logica para actualizar el DOM
+  }
+
+  async function markAsRead(emailId: string) {
+    try {
+      const response = await fetch(`/api/email/${emailId}/status`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: "read" }),
+      });
+
+      if (!response.ok) {
+        console.error("Failed to mark email as read");
+      }
+    } catch (error) {
+      console.error("Error marking email as read:", error);
+    }
+  }
+
+  function initializeEmailList() {
+    const emailItems = document.querySelectorAll("li[data-email-id]");
+
+    document.addEventListener("refresh-email", async () => {
+      console.log("Refreshing email list...");
+      await updateEmailList();
+    });
+
+    emailItems.forEach((item) => {
+      const emailId = item.getAttribute("data-email-id");
+      const checkbox = item.querySelector(`input[data-email-id="${emailId}"]`);
+
+      item.addEventListener("click", async (e) => {
+        // If clicking the checkbox, don't open preview
+        if (e.target === checkbox) {
+          e.stopPropagation();
+          return;
+        }
+
+        if (emailId) {
+          e.preventDefault();
+          console.log("Opening email:", emailId);
+          await markAsRead(emailId);
+          openPreview(emailId);
+        }
+      });
+
+      checkbox?.addEventListener("change", (e) => {
+        e.stopPropagation();
+        const isChecked = (e.target as HTMLInputElement).checked;
+        console.log("Email", emailId, "checked:", isChecked);
+        // Add your checkbox handling logic here
+      });
+    });
+  }
+
+  // Initialize on page load
+  initializeEmailList();
+
+  // Re-initialize on client-side navigation
+  document.addEventListener("astro:page-load", initializeEmailList);
+</script>

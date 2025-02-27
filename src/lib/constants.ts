@@ -1,4 +1,9 @@
 export const ROUTES = {
-	PROTECTED: ["/dashboard"],
-	UNPROTECTED: ["/login"],
+	PROTECTED: ["/", "/settings"],
+	UNPROTECTED: ["/login", "/setup"],
+	API: [
+		"/api/email/create",
+		"/api/email/[id]/status",
+		"/api/email/[id]/category",
+	],
 };

@@ -1,0 +1,323 @@
+---
+import Button from "@/components/ui/button.astro";
+import Tabs from "@/components/ui/tabs.astro";
+import TabsList from "@/components/ui/tabs-list.astro";
+import TabsTrigger from "@/components/ui/tabs-trigger.astro";
+import TabsContent from "@/components/ui/tabs-content.astro";
+import { isPreviewOpen, selectedEmailId } from "@/store/email";
+---
+
+<aside
+  id="email-preview"
+  class:list={[
+    "fixed top-0 right-0 h-full w-full sm:w-[32rem] lg:w-[40%] lg:max-w-[48rem]",
+    "bg-background border-l border-border shadow-lg",
+    "transform transition-transform duration-300 ease-in-out z-50",
+    isPreviewOpen.get() ? "translate-x-0" : "translate-x-full",
+  ]}
+>
+  <div class="h-full flex flex-col">
+    <!-- Header with improved styling -->
+    <div class="p-4 border-b border-border bg-card/50 backdrop-blur-sm">
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-semibold font-heading">Email Preview</h2>
+        <Button
+          variant="ghost"
+          size="icon"
+          class="rounded-full hover:bg-destructive/10 hover:text-destructive transition-colors"
+          id="close-preview-btn"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="w-4 h-4"
+          >
+            <path d="M18 6 6 18"></path>
+            <path d="m6 6 12 12"></path>
+          </svg>
+          <span class="sr-only">Close preview</span>
+        </Button>
+      </div>
+    </div>
+
+    <!-- Content Container with loading state -->
+    <div id="email-content" class="flex-1 overflow-y-auto">
+      <div
+        class="flex items-center justify-center h-full text-muted-foreground animate-pulse"
+        id="loading-state"
+      >
+        <svg
+          class="animate-spin h-6 w-6"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            class="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            stroke-width="4"></circle>
+          <path
+            class="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          ></path>
+        </svg>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<template id="email-content-template">
+  <div class="p-6">
+    <Tabs defaultValue="email" class="space-y-6">
+      <TabsList class="w-full justify-start border-b border-border p-1 gap-4">
+        <TabsTrigger value="email" class="text-sm font-medium"
+          >Email</TabsTrigger
+        >
+        <TabsTrigger value="metadata" class="text-sm font-medium"
+          >Details</TabsTrigger
+        >
+      </TabsList>
+
+      <TabsContent value="email" class="space-y-8 animate-in fade-in-50">
+        <!-- Email Header Section -->
+        <div id="email-header" class="space-y-4"></div>
+
+        <!-- Email Content Section -->
+        <div id="email-body" class="space-y-4"></div>
+      </TabsContent>
+
+      <TabsContent value="metadata" class="animate-in fade-in-50">
+        <div
+          id="email-metadata"
+          class="rounded-lg border border-border bg-card/50"
+        >
+        </div>
+      </TabsContent>
+    </Tabs>
+  </div>
+</template>
+
+<script>
+  import { isPreviewOpen, closePreview, selectedEmailId } from "@/store/email";
+
+  class EmailPreviewHandler {
+    private preview: HTMLElement | null;
+    private closeButton: HTMLElement | null;
+    private contentContainer: HTMLElement | null;
+    private loadingState: HTMLElement | null;
+
+    constructor() {
+      this.preview = document.getElementById("email-preview");
+      this.closeButton = document.getElementById("close-preview-btn");
+      this.contentContainer = document.getElementById("email-content");
+      this.loadingState = document.getElementById("loading-state");
+      this.setupEventListeners();
+      this.handleStoreChanges();
+    }
+
+    private async fetchEmailData(emailId: string) {
+      try {
+        const response = await fetch(`/api/emails/${emailId}`);
+        if (!response.ok) throw new Error("Failed to fetch email");
+        const emailData = await response.json();
+        return emailData;
+      } catch (error) {
+        console.error("Error fetching email:", error);
+        return null;
+      }
+    }
+
+    private showLoading() {
+      if (this.loadingState) this.loadingState.style.display = "flex";
+    }
+
+    private hideLoading() {
+      if (this.loadingState) this.loadingState.style.display = "none";
+    }
+
+    private formatDate(date: string | Date) {
+      return new Date(date).toLocaleString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+
+    private async updateEmailContent(emailId: string) {
+      if (!this.contentContainer) return;
+
+      this.showLoading();
+      console.log("Fetching email content for ID:", emailId);
+
+      const emailData = await this.fetchEmailData(emailId);
+      if (!emailData) {
+        this.hideLoading();
+        return;
+      }
+
+      const template = document.getElementById(
+        "email-content-template",
+      ) as HTMLTemplateElement;
+      if (!template) return;
+
+      const content = template.content.cloneNode(true) as DocumentFragment;
+
+      // Update header with enhanced styling
+      const headerEl = content.getElementById("email-header");
+      if (headerEl) {
+        headerEl.innerHTML = `
+          <div class="space-y-2">
+            <div class="flex items-center gap-2">
+              <h1 class="text-2xl font-semibold font-heading">${emailData.subject}</h1>
+              ${emailData.status === "unread" ? '<span class="w-2 h-2 rounded-full bg-primary"></span>' : ""}
+            </div>
+            
+            <div class="flex flex-col gap-1">
+              <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                <span class="font-medium text-foreground">${emailData.from}</span>
+                <span class="text-border">•</span>
+                <time class="text-xs">${this.formatDate(emailData.receivedAt)}</time>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-sm text-muted-foreground">To: ${emailData.to}</span>
+                ${
+                  emailData.category
+                    ? `
+                  <span class="px-2 py-1 text-xs rounded-full bg-primary/10 text-primary">
+                    ${emailData.category}
+                  </span>
+                `
+                    : ""
+                }
+              </div>
+            </div>
+          </div>
+          <div class="h-px bg-border/50 w-full"></div>
+        `;
+      }
+
+      // Update body with improved content styling
+      const bodyEl = content.getElementById("email-body");
+      if (bodyEl) {
+        bodyEl.innerHTML = `
+          <div class="prose prose-sm max-w-none">
+            <div class="text-foreground leading-relaxed">
+              ${emailData.content}
+            </div>
+          </div>
+        `;
+      }
+
+      // Update metadata with enhanced layout
+      const metadataEl = content.getElementById("email-metadata");
+      if (metadataEl) {
+        metadataEl.innerHTML = `
+          <div class="p-6 space-y-6">
+            <div class="grid grid-cols-2 gap-4 text-sm">
+              <div class="space-y-4">
+                <div>
+                  <div class="text-muted-foreground mb-1">Message ID</div>
+                  <div class="font-mono text-xs bg-muted/50 p-2 rounded">${emailData.id}</div>
+                </div>
+                <div>
+                  <div class="text-muted-foreground mb-1">Category</div>
+                  <div class="font-medium">${emailData.category || "Uncategorized"}</div>
+                </div>
+              </div>
+              <div class="space-y-4">
+                <div>
+                  <div class="text-muted-foreground mb-1">Received</div>
+                  <div class="font-medium">${this.formatDate(emailData.receivedAt)}</div>
+                </div>
+                <div>
+                  <div class="text-muted-foreground mb-1">Status</div>
+                  <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full ${
+                      emailData.status === "unread"
+                        ? "bg-primary"
+                        : "bg-muted-foreground"
+                    }"></span>
+                    <span class="font-medium capitalize">${emailData.status}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="pt-4 border-t border-border">
+              <div class="text-muted-foreground mb-2">Raw Data</div>
+              <pre class="text-xs bg-muted/50 p-4 rounded overflow-x-auto">
+                ${JSON.stringify(emailData.raw, null, 2)}
+              </pre>
+            </div>
+          </div>
+        `;
+      }
+
+      // Clear existing content and append new content
+      this.contentContainer.innerHTML = "";
+      this.contentContainer.appendChild(content);
+      this.hideLoading();
+    }
+
+    private setupEventListeners() {
+      this.closeButton?.addEventListener("click", (e) => {
+        e.preventDefault();
+        closePreview();
+      });
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && isPreviewOpen.get()) {
+          closePreview();
+        }
+      });
+    }
+
+    private handleStoreChanges() {
+      if (!this.preview) return;
+
+      isPreviewOpen.subscribe((isOpen) => {
+        console.log("Preview state changed:", isOpen);
+        if (isOpen) {
+          this.preview?.classList.remove("translate-x-full");
+          this.preview?.classList.add("translate-x-0");
+        } else {
+          this.preview?.classList.remove("translate-x-0");
+          this.preview?.classList.add("translate-x-full");
+        }
+      });
+
+      selectedEmailId.subscribe((emailId) => {
+        console.log("Selected email ID changed:", emailId);
+        if (emailId) {
+          this.updateEmailContent(emailId);
+        }
+      });
+    }
+  }
+
+  // Initialize handler
+  const initializePreview = () => {
+    console.log("Initializing preview handler");
+    new EmailPreviewHandler();
+  };
+
+  // Initialize on page load
+  initializePreview();
+
+  // Re-initialize on client-side navigation
+  document.addEventListener("astro:page-load", initializePreview);
+</script>

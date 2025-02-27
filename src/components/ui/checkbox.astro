@@ -1,36 +1,36 @@
 ---
-import type { HTMLAttributes } from "astro/types";
-import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "@/lib/utils";
+import type { HTMLAttributes } from 'astro/types';
+import { cva, type VariantProps } from 'class-variance-authority';
+import { cn } from '@/lib/utils';
 
 const checkboxVariants = cva(
-  "peer col-start-1 row-start-1 shrink-0 appearance-none rounded border border-input bg-background ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:focus-visible:ring-destructive",
+  'peer col-start-1 row-start-1 shrink-0 appearance-none rounded border border-input bg-background ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:focus-visible:ring-destructive',
   {
     variants: {
       variant: {
         default:
-          "checked:bg-primary checked:border-primary hover:border-primary/80",
+          'checked:bg-primary checked:border-primary hover:border-primary/80',
         circle:
-          "rounded-full checked:bg-primary checked:border-primary hover:border-primary/80",
+          'rounded-full checked:bg-primary checked:border-primary hover:border-primary/80',
         destructive:
-          "checked:bg-destructive checked:border-destructive hover:border-destructive/80",
+          'checked:bg-destructive checked:border-destructive hover:border-destructive/80',
       },
       size: {
-        sm: "h-3.5 w-3.5",
-        default: "h-4 w-4",
-        lg: "h-5 w-5",
+        sm: 'h-3.5 w-3.5',
+        default: 'h-4 w-4',
+        lg: 'h-5 w-5',
       },
     },
     defaultVariants: {
-      variant: "default",
-      size: "default",
+      variant: 'default',
+      size: 'default',
     },
-  },
+  }
 );
 
 interface Props
   extends VariantProps<typeof checkboxVariants>,
-    Omit<HTMLAttributes<"input">, "size" | "type"> {
+    Omit<HTMLAttributes<'input'>, 'size' | 'type'> {
   error?: boolean;
 }
 

@@ -1,78 +1,128 @@
 ---
-import Layout from "@/layouts/Layout.astro";
+import MailLayout from "@/layouts/MailLayout.astro";
+
+import EmailPreview from "@/components/app/EmailPreview.astro";
+import MailList from "@/components/app/MailList.astro";
+import Header from "@/components/navigation/header.astro";
+
 import Button from "@/components/ui/button.astro";
-import Label from "@/components/ui/label.astro";
-import Input from "@/components/ui/input.astro";
-import { actions } from "astro:actions";
+import Option from "@/components/ui/option.astro";
+import Select from "@/components/ui/select.astro";
 
-// Redirect if already authenticated
-const token = Astro.cookies.get("auth-token")?.value;
-if (token) {
-  return Astro.redirect("/dashboard");
-}
+import { db, Email, count as rows } from "astro:db";
 
-// Get action result
-const result = await Astro.getActionResult(actions.auth.Login);
-
-if (result && !result.error) {
-  return Astro.redirect("/dashboard");
-}
+const [{ count }] = await db.select({ count: rows() }).from(Email);
 ---
 
-<Layout title="Login | Email Manager">
-  <main class="min-h-screen grid place-items-center p-4 bg-background">
-    <div class="w-full max-w-md space-y-6">
-      <!-- Header -->
-      <div class="space-y-2 text-center">
-        <h1 class="text-3xl font-bold tracking-tight text-foreground">
-          Email Manager
-        </h1>
-        <p class="text-muted-foreground text-balance">
-          Track and monitor all your forwarded email addresses in one place
-        </p>
-      </div>
+<MailLayout title="Home">
+  <Header slot="header" />
 
-      <!-- Login Card -->
-      <div class="p-6 bg-card shadow-lg rounded-lg">
-        <form method="POST" action={actions.auth.Login} class="space-y-4">
-          <div class="space-y-2">
-            <Label
-              for="password"
-              class="text-sm font-medium leading-none text-foreground peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+  <div class="flex h-full max-w-7xl mx-auto">
+    <div class="flex-1 overflow-hidden border-r border-border">
+      <div class="flex flex-col h-full">
+        <div
+          class="flex items-center justify-between h-14 px-4 border-b border-border"
+        >
+          <div class="flex items-center gap-2">
+            <Button
+              id="refresh-emails"
+              variant="ghost"
+              size="icon"
+              class="p-2 hover:bg-accent/50 rounded-full"
             >
-              Password
-            </Label>
-            <div class="relative">
-              <Input
-                name="password"
-                type="password"
-                id="password"
-                required
-                minlength={5}
-                autocomplete="current-password"
-                class="w-full"
-                error={!!result?.error}
-              />
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                class="absolute right-3 top-1/2 -translate-y-1/2"
-                onclick={`const input = document.getElementById('password'); const type = input.type === 'password' ? 'text' : 'password'; input.type = type; input.nextElementSibling.textContent = type === 'password' ? '👁️' : '🔒';`}
+              <svg
+                id="refresh-icon"
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="transition-transform duration-700"
               >
-                👁️
-              </Button>
-            </div>
-            {
-              result?.error && (
-                <p class="text-destructive text-sm">{result.error.message}</p>
-              )
-            }
+                <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"
+                ></path>
+                <path d="M3 3v5h5"></path>
+                <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"
+                ></path>
+                <path d="M16 21h5v-5"></path>
+              </svg>
+            </Button>
+
+            <Select class="w-[120px]" defaultValue="all">
+              <Option value="all">All</Option>
+              <Option value="unread">Unread</Option>
+              <Option value="starred">Starred</Option>
+            </Select>
+
+            <Select class="w-[140px]" defaultValue="all">
+              <Option value="all">All categories</Option>
+              <Option value="system">System</Option>
+              <Option value="work">Work</Option>
+            </Select>
           </div>
 
-          <Button type="submit" class="w-full">Login</Button>
-        </form>
+          <div class="flex items-center gap-2">
+            <p class="text-sm text-muted-foreground">
+              {count} emails
+            </p>
+          </div>
+        </div>
+
+        <div class="overflow-y-auto h-[calc(100vh-8rem)]">
+          <MailList />
+        </div>
       </div>
+      <EmailPreview />
     </div>
-  </main>
-</Layout>
+  </div>
+</MailLayout>
+
+<style>
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    50% {
+      transform: rotate(-720deg);
+    }
+    100% {
+      transform: rotate(0deg);
+    }
+  }
+  .spinning {
+    animation: spin 2s cubic-bezier(0.4, 0, 0.2, 1);
+    animation-timing-function: ease-out;
+  }
+</style>
+
+<script>
+  document.getElementById("refresh-emails")?.addEventListener("click", () => {
+    const icon = document.getElementById("refresh-icon");
+    icon?.classList.add("spinning");
+    setTimeout(() => {
+      icon?.classList.remove("spinning");
+    }, 1000);
+  });
+</script>
+
+<script>
+  function initializeRefreshButton() {
+    const refreshButton = document.getElementById("refresh-emails");
+
+    refreshButton?.addEventListener("click", () => {
+      // Dispatch custom event
+      const refreshEvent = new CustomEvent("refresh-emails");
+      document.dispatchEvent(refreshEvent);
+    });
+  }
+
+  // Initialize on page load
+  initializeRefreshButton();
+
+  // Re-initialize on client-side navigation
+  document.addEventListener("astro:page-load", initializeRefreshButton);
+</script>

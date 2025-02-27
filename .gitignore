@@ -27,3 +27,5 @@ pnpm-debug.log*
 .vercel/
 .output/
 
+# Personal configuration
+scripts/me.js

@@ -1,0 +1,55 @@
+@baseUrl = HERE_YOUR_BASE_URL
+@authToken = HERE_YOUR_AUTH_TOKEN
+
+### Test Auth Only
+GET {{baseUrl}}/api/email/create
+Authorization: Bearer {{authToken}}
+
+### Create new email
+POST {{baseUrl}}/api/email/create
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "from": "test@example.com",
+    "to": "recipient@example.com",
+    "subject": "Test Email via REST Client",
+    "content": "This is a test email content",
+    "category": "test",
+    "raw": {
+        "messageId": "test-123",
+        "date": "2024-03-19T12:00:00Z",
+        "headers": {
+            "from": "Test Sender <test@example.com>",
+            "to": "Test Recipient <recipient@example.com>",
+            "subject": "Test Email"
+        }
+    }
+}
+### Get all emails
+GET {{baseUrl}}/api/email/create
+Authorization: Bearer {{authToken}}
+
+### Get emails by category
+GET {{baseUrl}}/api/email/create?category=test
+Authorization: Bearer {{authToken}}
+
+### Get a single email by ID
+GET {{baseUrl}}/api/email/abc123
+Authorization: Bearer {{authToken}}
+
+### Update email category
+POST {{baseUrl}}/api/email/abc123/category
+Content-Type: application/json
+
+{
+    "category": "important"
+}
+
+### Update email status
+POST {{baseUrl}}/api/email/abc123/status
+Content-Type: application/json
+
+{
+    "status": "read"
+}
